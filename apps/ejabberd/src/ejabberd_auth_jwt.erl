@@ -59,15 +59,15 @@
 -spec start(Host :: ejabberd:server()) -> ok.
 start(Host) ->
     UsernameKey = get_auth_opt(Host, jwt_username_key),
-    true = is_atom(UsernameKey) andalso UsernameKey /= undefined andalso UsernameKey /= false,
+    true = is_atom(UsernameKey) andalso UsernameKey /= undefined,
 
     JWTSecret =
     case {get_auth_opt(Host, jwt_secret_source), get_auth_opt(Host, jwt_secret)} of
-        {false, JWTSecret0} when is_list(JWTSecret0) ->
+        {undefined, JWTSecret0} when is_list(JWTSecret0) ->
             list_to_binary(JWTSecret0);
-        {false, JWTSecret0} when is_binary(JWTSecret0) ->
+        {undefined, JWTSecret0} when is_binary(JWTSecret0) ->
             JWTSecret0;
-        {false, {env, _} = Env} ->
+        {undefined, {env, _} = Env} ->
             Env;
         {{env, _} = Env, _} ->
             Env;
@@ -219,7 +219,7 @@ remove_user(_LUser, _LServer, _Password) ->
 get_auth_opt(Host, Key) ->
     case ejabberd_config:get_local_option(auth_opts, Host) of
         undefined ->
-            false;
+            undefined;
         AuthOpts ->
             case lists:keyfind(Key, 1, AuthOpts) of
                 {Key, Value} ->

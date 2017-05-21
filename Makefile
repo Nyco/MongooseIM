@@ -56,11 +56,11 @@ $(DEVNODES): certs configure.out rel/vars.config
 	DEVNODE=true ./rebar3 as $@ release) > $(LOG_SILENCE_COVER)
 
 certs: tools/ssl/ca/cacert.pem tools/ssl/fake_cert.pem \
-       tools/ssl/fake_key.pem tools/ssl/fake_server.pem \
+       tools/ssl/fake_key.pem tools/ssl/fake_pubkey.pem tools/ssl/fake_server.pem \
 	   tools/ssl/fake_dh_server.pem
 
 tools/ssl/ca/cacert.pem tools/ssl/fake_cert.pem \
-tools/ssl/fake_key.pem tools/ssl/fake_server.pem \
+tools/ssl/fake_key.pem tools/ssl/fake_pubkey.pem tools/ssl/fake_server.pem \
 tools/ssl/fake_dh_server.pem:
 	cd tools/ssl && make
 
