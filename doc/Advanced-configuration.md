@@ -107,16 +107,22 @@ The tuple order is important, unless the no `host_config` option is set. Retaini
 
 * **auth_method** (local)
     * **Description:** Chooses an authentication module or a list of modules. Modules from a list are queried one after another until one of them replies positively.
-    * **Valid values:** `internal` (Mnesia), `odbc`, `external`, `anonymous`, `ldap`
-    * **Warning:** `external` and `ldap` limit SASL mechanisms list to `PLAIN` and `ANONYMOUS`.
+    * **Valid values:** `internal` (Mnesia), `odbc`, `external`, `anonymous`, `ldap`, `jwt`, `riak`, `http`
+    * **Warning:** `external`, `jwt` and `ldap` work only with `PLAIN` SASL mechanism.
     * **Examples:** `odbc`, `[internal, anonymous]`
 
-* **auth_password_format** (local)
+* **auth_opts** (local)
+    * **Description:** It it a configuration of chosen auth backends.
+    * **Valid values:** See subsection below.
+
+#### Auth backend options
+
+* **password_format** (local)
     * **Description:** Decide whether user passwords will be kept plain or hashed in the database. Currently the popular XMPP clients support the SCRAM method, so it is strongly recommended to use the hashed version. The older ones can still use `PLAIN` mechiansm. `DIGEST-MD5` is not available with `scram`.
     * **Values:** `plain`, `scram`
     * **Default:** `plain` (for compatibility reasons, might change soon)
 
-* **auth_scram_iterations** (local)
+* **scram_iterations** (local)
     * **Description:** Hash function round count. The higher the value, the more difficult breaking the hashes is. We advise against setting it too low.
     * **Default:** 4096
 
@@ -124,7 +130,28 @@ The tuple order is important, unless the no `host_config` option is set. Retaini
     * **Description:** Path to the authentication script used by the `external` auth module. Script API specification can be found in the [[External authentication script]].
 
 * **LDAP-related options**
-  * [[Everything about LDAP]]
+    * [[Everything about LDAP]]
+
+* **jwt_secret_source** (local)
+    * **Description:** A path to a file or environment variable, which contents will be used as JWT secret.
+    * **Warning:** While a file is read only once, during startup, environment variable is checked on every auth request.
+    * **Value:** string, e.g. `/etc/secrets/jwt` or `{env, "env-variable-name"}`
+    * **Default:** none, either `jwt_secret_source` or `jwt_secret` must be set
+
+* **jwt_secret** (local)
+    * **Description:** A binary with JWT secret. This options is ignored and overwritten, if `jwt_secret_source` is defined.
+    * **Value:** binary
+    * **Default:** none, either `jwt_secret_source` or `jwt_secret` must be set
+
+* **jwt_algorithm** (local)
+    * **Description:** A name of algorithm used to sign JWT.
+    * **Valid values:** `"HS256", "RS256", "ES256", "HS386", "RS386", "ES386", "HS512", "RS512", "ES512"`
+    * **Default:** none, it's a mandatory option
+
+* **jwt_username_key** (local)
+    * **Description:** A JWT key that contains username to verify.
+    * **Value:** atom
+    * **Default:** none, it's a mandatory option
 
 ### Database setup
 
