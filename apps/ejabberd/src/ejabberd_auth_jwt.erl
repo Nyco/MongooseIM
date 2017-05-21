@@ -57,7 +57,26 @@
 %%%----------------------------------------------------------------------
 
 -spec start(Host :: ejabberd:server()) -> ok.
-start(_Host) ->
+start(Host) ->
+    UsernameKey = get_auth_opt(Host, jwt_username_key),
+    true = is_atom(UsernameKey) andalso UsernameKey /= undefined andalso UsernameKey /= false,
+
+    JWTSecret =
+    case {get_auth_opt(Host, jwt_secret_source), get_auth_opt(Host, jwt_secret)} of
+        {false, JWTSecret0} when is_list(JWTSecret0) ->
+            list_to_binary(JWTSecret0);
+        {false, JWTSecret0} when is_binary(JWTSecret0) ->
+            JWTSecret0;
+        {false, {env, _} = Env} ->
+            Env;
+        {{env, _} = Env, _} ->
+            Env;
+        {JWTSecretPath, _} when is_list(JWTSecretPath) ->
+            {ok, JWTSecretBin} = file:read_file(JWTSecretPath),
+            JWTSecretBin
+    end,
+    set_auth_opts(Host, [{jwt_secret, JWTSecret},
+                         {jwt_algorithm, list_to_binary(get_auth_opt(Host, jwt_algorithm))}]),
     ok.
 
 -spec stop(Host :: ejabberd:server()) -> ok.
@@ -76,19 +95,14 @@ authorize(Creds) ->
                      LServer :: ejabberd:lserver(),
                      Password :: binary()) -> boolean().
 check_password(LUser, LServer, Password) ->
-    Key = case get_auth_opt(LServer, jwt_key) of
-              Key1 when is_binary(Key1) ->
-                  Key1;
-              Key1 when is_list(Key1) ->
-                  list_to_binary(Key1);
-              {env, Var} ->
-                  list_to_binary(os:getenv(Var))
+    Key = case get_auth_opt(LServer, jwt_secret) of
+              Key1 when is_binary(Key1) -> Key1;
+              {env, Var} -> list_to_binary(os:getenv(Var))
           end,
-    Options = #{key => Key, alg => <<"HS256">>},
+    Options = #{key => Key, alg => get_auth_opt(LServer, jwt_algorithm)},
     case jwerl:verify(Password, Options) of
         {ok, TokenData} ->
-            %% Example: bookingNumber => <<"10857838">>
-            UserKey = get_auth_opt(LServer, token_user_key),
+            UserKey = get_auth_opt(LServer, jwt_username_key),
             case maps:find(UserKey, TokenData) of
                 {ok, LUser} ->
                     %% Login username matches $token_user_key in TokenData
@@ -200,7 +214,8 @@ remove_user(_LUser, _LServer, _Password) ->
     {error, not_allowed}.
 
 
-%% Internal helper
+%% Internal helpers
+
 get_auth_opt(Host, Key) ->
     case ejabberd_config:get_local_option(auth_opts, Host) of
         undefined ->
@@ -213,3 +228,11 @@ get_auth_opt(Host, Key) ->
                     undefined
             end
     end.
+
+set_auth_opts(Host, KVs) ->
+    AuthOpts = ejabberd_config:get_local_option(auth_opts, Host),
+    AuthOpts1 = lists:foldl(fun({Key, Value}, Acc) ->
+                                    lists:keystore(Key, 1, Acc, {Key, Value})
+                            end, AuthOpts, KVs),
+    ejabberd_config:add_local_option({auth_opts, Host}, AuthOpts1).
+
