@@ -58,7 +58,7 @@ init_per_suite(Config) ->
             Self = self(),
             ETSProcess = spawn(fun() -> ets_owner(Self) end),
             wait_for_ets(),
-            meck_config(Config), 
+            meck_config(Config),
             [{ets_process, ETSProcess} | Config]
     end.
 
