@@ -61,20 +61,7 @@ start(Host) ->
     UsernameKey = get_auth_opt(Host, jwt_username_key),
     true = is_atom(UsernameKey) andalso UsernameKey /= undefined,
 
-    JWTSecret =
-    case {get_auth_opt(Host, jwt_secret_source), get_auth_opt(Host, jwt_secret)} of
-        {undefined, JWTSecret0} when is_list(JWTSecret0) ->
-            list_to_binary(JWTSecret0);
-        {undefined, JWTSecret0} when is_binary(JWTSecret0) ->
-            JWTSecret0;
-        {undefined, {env, _} = Env} ->
-            Env;
-        {{env, _} = Env, _} ->
-            Env;
-        {JWTSecretPath, _} when is_list(JWTSecretPath) ->
-            {ok, JWTSecretBin} = file:read_file(JWTSecretPath),
-            JWTSecretBin
-    end,
+    JWTSecret = get_jwt_secret(Host),
     set_auth_opts(Host, [{jwt_secret, JWTSecret},
                          {jwt_algorithm, list_to_binary(get_auth_opt(Host, jwt_algorithm))}]),
     ok.
@@ -213,8 +200,24 @@ remove_user(_LUser, _LServer) ->
 remove_user(_LUser, _LServer, _Password) ->
     {error, not_allowed}.
 
+%%%----------------------------------------------------------------------
+%%% Internal helpers
+%%%----------------------------------------------------------------------
 
-%% Internal helpers
+% A direct path to a file is read only once during startup,
+% a path in environment variable is read on every auth request.
+get_jwt_secret(Host) ->
+    case {get_auth_opt(Host, jwt_secret_source), get_auth_opt(Host, jwt_secret)} of
+        {undefined, JWTSecret0} when is_list(JWTSecret0) ->
+            list_to_binary(JWTSecret0);
+        {undefined, JWTSecret0} when is_binary(JWTSecret0) ->
+            JWTSecret0;
+        {{env, _} = Env, _} ->
+            Env;
+        {JWTSecretPath, _} when is_list(JWTSecretPath) ->
+            {ok, JWTSecretBin} = file:read_file(JWTSecretPath),
+            JWTSecretBin
+    end.
 
 get_auth_opt(Host, Key) ->
     case ejabberd_config:get_local_option(auth_opts, Host) of
@@ -229,6 +232,12 @@ get_auth_opt(Host, Key) ->
             end
     end.
 
+%% This function will store new auth_opts for specific host.
+%% If auth_opts for Host are fetched from global setting,
+%% the new values will be available for get_local_option calls
+%% but not for get_global_option.
+%% Also, options in `KVs` will get overwritten and the remaining ones are copied.
+%% TODO: Replace with generic functions in ejabberd_auth.
 set_auth_opts(Host, KVs) ->
     AuthOpts = ejabberd_config:get_local_option(auth_opts, Host),
     AuthOpts1 = lists:foldl(fun({Key, Value}, Acc) ->

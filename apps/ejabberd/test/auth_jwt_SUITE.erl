@@ -6,6 +6,7 @@
 
 -define(DOMAIN1, <<"localhost">>).
 -define(USERNAME, <<"10857839">>).
+-define(WRONG_USERNAME, <<"alice">>).
 -define(JWT_KEY, <<"testtesttest">>).
 %%--------------------------------------------------------------------
 %% Suite configuration
@@ -104,7 +105,7 @@ check_password_fails_for_wrong_token(_C) ->
                                              generate_token(hs256, 60, ?JWT_KEY)).
 
 check_password_fails_for_correct_token_but_wrong_username(_C) ->
-    false = ejabberd_auth_jwt:check_password(<<"alice">>, ?DOMAIN1,
+    false = ejabberd_auth_jwt:check_password(?WRONG_USERNAME, ?DOMAIN1,
                                              generate_token(hs256, 0, ?JWT_KEY)).
 
 authorize(_C) ->
@@ -117,11 +118,10 @@ authorize(_C) ->
     ejabberd_auth_jwt = mongoose_credentials:get(Creds2, auth_module).
 
 set_password(_Config) ->
-    {error, not_allowed} = ejabberd_auth_jwt:set_password(<<"alice">>, ?DOMAIN1, <<"mialakota">>).
+    {error, not_allowed} = ejabberd_auth_jwt:set_password(?USERNAME, ?DOMAIN1, <<"mialakota">>).
 
 try_register(_Config) ->
-    {error, not_allowed} = ejabberd_auth_jwt:try_register(<<"nonexistent">>,
-                                                          ?DOMAIN1, <<"newpass">>).
+    {error, not_allowed} = ejabberd_auth_jwt:try_register(?USERNAME, ?DOMAIN1, <<"newpass">>).
 
 % get_password + get_password_s
 get_password(_Config) ->
@@ -162,7 +162,12 @@ ets_owner(Parent) ->
     Parent ! ets_ready,
     receive stop -> ok end.
 
-wait_for_ets() -> receive ets_ready -> ok end.
+wait_for_ets() ->
+    receive
+        ets_ready -> ok
+    after
+        5000 -> ct:fail(cant_prepare_ets)
+    end.
 
 stop_ets(undefined) -> ok;
 stop_ets(Pid) -> Pid ! stop.

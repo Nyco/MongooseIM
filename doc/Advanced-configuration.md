@@ -112,7 +112,7 @@ The tuple order is important, unless the no `host_config` option is set. Retaini
     * **Examples:** `odbc`, `[internal, anonymous]`
 
 * **auth_opts** (local)
-    * **Description:** It it a configuration of chosen auth backends.
+    * **Description:** Auth backend options.
     * **Valid values:** See subsection below.
 
 #### Auth backend options
@@ -134,7 +134,7 @@ The tuple order is important, unless the no `host_config` option is set. Retaini
 
 * **jwt_secret_source** (local)
     * **Description:** A path to a file or environment variable, which contents will be used as JWT secret.
-    * **Warning:** While a file is read only once, during startup, environment variable is checked on every auth request.
+    * **Warning:** A direct path to a file is read only once during startup, a path in environment variable is read on every auth request.
     * **Value:** string, e.g. `/etc/secrets/jwt` or `{env, "env-variable-name"}`
     * **Default:** none, either `jwt_secret_source` or `jwt_secret` must be set
 
